@@ -32,6 +32,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 
 /**
  * # SaltPlayer
@@ -298,7 +299,7 @@ abstract class SaltPlayer(
      * commands, and starts a new [activeJob] to handle the new context.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun processOutContextCommand(outContextCommand: OutContextCommand) {
+    private suspend fun processOutContextCommand(outContextCommand: OutContextCommand) {
         // Atomically drain any leftover in-context commands from the previous job's queue
         // Using a non-suspending `tryReceive` loop prevents a race condition where a new
         // command could be posted after a check for emptiness but before a suspending `receive`
@@ -344,6 +345,12 @@ abstract class SaltPlayer(
                     }
                 }
             }
+
+        // By yielding here, we explicitly create a suspension point
+        // 1. It satisfies the IDE's requirement for the `suspend` modifier
+        // 2. More importantly, it gives the just-cancelled `activeJob` a chance
+        //    to execute its cleanup logic promptly on the single-threaded dispatcher
+        yield()
     }
 
     companion object {
