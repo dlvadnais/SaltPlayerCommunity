@@ -22,6 +22,7 @@
 
 package com.moriafly.sp.player
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -72,14 +73,18 @@ import kotlinx.coroutines.launch
  * - **For In-Progress Resources:** Inside any cancellable `process` function (like `processLoad`),
  * you **must** use a `try-finally` block to ensure that any resources you are currently
  * in the process of creating are properly cleaned up if the operation is cancelled halfway through.
+ *
+ * @param dispatcher The [CoroutineDispatcher] to use for all player operations.
  */
 @UnstableSpPlayerApi
-abstract class SaltPlayer {
+abstract class SaltPlayer(
+    dispatcher: CoroutineDispatcher = Dispatchers.Main
+) {
     /**
      * The [CoroutineScope] for all player operations. It uses a [SupervisorJob] to ensure that
      * the failure of one child coroutine does not cancel the entire scope.
      */
-    protected val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    protected val scope = CoroutineScope(dispatcher + SupervisorJob())
 
     /**
      * A channel to receive all external commands from the user.
