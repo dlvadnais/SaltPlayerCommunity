@@ -309,7 +309,7 @@ abstract class SaltPlayer(
      */
     private fun processInContextCommand(inContextCommand: InContextCommand) {
         // If there is an active job, forward the command to the in-context channel
-        if (activeJob != null) {
+        if (activeJob?.isActive == true) {
             // Use trySend for forwarding to avoid blocking, allowing the in-context method to be
             // interrupted by out-of-context operations
             // That is, when an out-of-context command is triggered, it can enter
