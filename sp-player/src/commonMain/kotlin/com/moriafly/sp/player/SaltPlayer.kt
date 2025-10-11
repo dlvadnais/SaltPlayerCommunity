@@ -299,15 +299,17 @@ abstract class SaltPlayer(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun processOutContextCommand(outContextCommand: OutContextCommand) {
-        // Before starting a new task, clear any leftover in-context commands from the previous one.
-        while (!inContextCommandChannel.isEmpty) {
-            inContextCommandChannel.receive()
+        // Atomically drain any leftover in-context commands from the previous job's queue
+        // Using a non-suspending `tryReceive` loop prevents a race condition where a new
+        // command could be posted after a check for emptiness but before a suspending `receive`
+        while (inContextCommandChannel.tryReceive().isSuccess) {
+            // Loop until the channel is empty
         }
 
-        // Cancel the previous job without waiting for its completion to ensure responsiveness.
+        // Cancel the previous job without waiting for its completion to ensure responsiveness
         activeJob?.cancel()
 
-        // Start a new job for the new context.
+        // Start a new job for the new context
         activeJob =
             scope.launch {
                 when (outContextCommand) {
@@ -319,8 +321,8 @@ abstract class SaltPlayer(
                     is OutContextCommand.Next -> processNext()
                 }
 
-                // If the job is still active after the initial processing (e.g., load was successful),
-                // start consuming in-context commands.
+                // If the job is still active after the initial processing
+                // (e.g., load was successful), start consuming in-context commands
                 if (isActive) {
                     for (inContextCommand in inContextCommandChannel) {
                         when (inContextCommand) {
