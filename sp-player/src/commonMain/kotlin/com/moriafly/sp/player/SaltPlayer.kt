@@ -298,7 +298,7 @@ abstract class SaltPlayer(
      * commands, and starts a new [activeJob] to handle the new context.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun processOutContextCommand(outContextCommand: OutContextCommand) {
+    private fun processOutContextCommand(outContextCommand: OutContextCommand) {
         // Atomically drain any leftover in-context commands from the previous job's queue
         // Using a non-suspending `tryReceive` loop prevents a race condition where a new
         // command could be posted after a check for emptiness but before a suspending `receive`
