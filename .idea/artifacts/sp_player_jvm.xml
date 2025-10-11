@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="sp-player-jvm">
+    <output-path>$PROJECT_DIR$/sp-player/build/libs</output-path>
+    <root id="archive" name="sp-player-jvm.jar">
+      <element id="module-output" name="Salt_Player_Community.sp-player.jvmMain" />
+    </root>
+  </artifact>
+</component>

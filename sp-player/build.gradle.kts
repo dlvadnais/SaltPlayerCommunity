@@ -1,10 +1,14 @@
+import shadow.bundletool.com.android.tools.r8.internal.jv
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.android.lint)
+    alias(libs.plugins.kotlinx.atomicfu)
 }
 
 kotlin {
+    jvm()
 
     // Target declarations - add or remove as needed below. These define
     // which platforms this KMP module supports.
@@ -13,15 +17,15 @@ kotlin {
         namespace = "com.moriafly.sp.player"
         compileSdk = 36
         minSdk = 23
-
-        withHostTestBuilder {
-        }
-
-        withDeviceTestBuilder {
-            sourceSetTreeName = "test"
-        }.configure {
-            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        }
+//
+//        withHostTestBuilder {
+//        }
+//
+//        withDeviceTestBuilder {
+//            sourceSetTreeName = "test"
+//        }.configure {
+//            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+//        }
     }
 
     // For iOS targets, this is also where you should
@@ -68,6 +72,7 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+                implementation(libs.jetbrains.kotlinx.coroutines.test)
             }
         }
 
@@ -79,13 +84,20 @@ kotlin {
             }
         }
 
-        getByName("androidDeviceTest") {
+        jvmMain {
             dependencies {
-                implementation(libs.androidx.runner)
-                implementation(libs.androidx.core)
-                implementation(libs.androidx.junit)
             }
         }
+
+        jvmTest {}
+
+//        getByName("androidDeviceTest") {
+//            dependencies {
+//                implementation(libs.androidx.runner)
+//                implementation(libs.androidx.core)
+//                implementation(libs.androidx.junit)
+//            }
+//        }
 
         iosMain {
             dependencies {

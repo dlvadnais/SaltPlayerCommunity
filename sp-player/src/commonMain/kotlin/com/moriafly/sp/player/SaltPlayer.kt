@@ -22,6 +22,7 @@
 
 package com.moriafly.sp.player
 
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,25 +112,32 @@ abstract class SaltPlayer(
      */
     protected val callbacks = mutableListOf<Callback>()
 
+    private val _mediaItem = atomic<Any?>(null)
+
     /**
      * The current media item being played or loaded. Can be any object,
      * to be interpreted by the subclass implementation.
      */
-    var mediaItem: Any? = null
-        protected set
+    var mediaItem: Any?
+        get() = _mediaItem.value
+        protected set(value) {
+            _mediaItem.value = value
+        }
+
+    private val _state = atomic(State.Idle)
 
     /**
-     * The current [State] of the player (e.g., Idle, Ready, Playing).
-     * Setting this property will notify all registered [Callback]s of the state change.
+     * The current [State] of the player.
      */
-    var state: State = State.Idle
+    var state: State
+        get() = _state.value
         protected set(value) {
-            field = value
+            _state.value = value
+
             when (value) {
                 State.Ready -> {
                     callbacks.forEach { it.onIsPlayingChanged(getIsPlaying()) }
                 }
-
                 else -> {
                     // Do nothing for other states in here
                 }
@@ -139,9 +147,12 @@ abstract class SaltPlayer(
 
     init {
         // Launches a coroutine to process commands from the main command channel
+        // In this case, when sending Out -> In -> Out in sequence, the In in the middle may likely
+        // not be executed
         scope.launch {
             for (command in commandChannel) {
                 when (command) {
+                    is NonContextCommand -> processNonContextCommand(command)
                     is InContextCommand -> processInContextCommand(command)
                     is OutContextCommand -> processOutContextCommand(command)
                 }
@@ -213,10 +224,10 @@ abstract class SaltPlayer(
 
     fun next() = commandChannel.trySend(OutContextCommand.Next)
 
-    fun setConfig(config: Config) = commandChannel.trySend(InContextCommand.SetConfig(config))
+    fun setConfig(config: Config) = commandChannel.trySend(NonContextCommand.SetConfig(config))
 
     fun customInContextCommand(command: CustomCommand) =
-        commandChannel.trySend(InContextCommand.CustomInContextCommand(command))
+        commandChannel.trySend(NonContextCommand.Custom(command))
 
     abstract fun getIsPlaying(): Boolean
 
@@ -282,15 +293,29 @@ abstract class SaltPlayer(
      */
     protected abstract suspend fun processNext()
 
-    protected abstract suspend fun processSetConfig(config: Config)
+    protected open suspend fun processSetConfig(config: Config) {}
 
-    protected abstract suspend fun processCustomInContextCommand(command: CustomCommand)
+    protected open suspend fun processCustomInContextCommand(command: CustomCommand) {}
+
+    private suspend fun processNonContextCommand(nonContextCommand: NonContextCommand) {
+        when (nonContextCommand) {
+            is NonContextCommand.SetConfig -> processSetConfig(nonContextCommand.config)
+            is NonContextCommand.Custom -> processCustomInContextCommand(nonContextCommand.command)
+        }
+    }
 
     /**
      * Forwards an [InContextCommand] to the dedicated channel for processing by the active job.
      */
     private fun processInContextCommand(inContextCommand: InContextCommand) {
-        inContextCommandChannel.trySend(inContextCommand)
+        // If there is an active job, forward the command to the in-context channel
+        if (activeJob != null) {
+            // Use trySend for forwarding to avoid blocking, allowing the in-context method to be
+            // interrupted by out-of-context operations
+            // That is, when an out-of-context command is triggered, it can enter
+            // processOutContextCommand to clear the in-context command
+            inContextCommandChannel.trySend(inContextCommand)
+        }
     }
 
     /**
@@ -310,18 +335,18 @@ abstract class SaltPlayer(
         // Cancel the previous job without waiting for its completion to ensure responsiveness
         activeJob?.cancel()
 
+        when (outContextCommand) {
+            is OutContextCommand.Init -> processInit()
+            is OutContextCommand.Load -> processLoad(outContextCommand.mediaItem)
+            is OutContextCommand.Stop -> processStop()
+            is OutContextCommand.Release -> processRelease()
+            is OutContextCommand.Previous -> processPrevious()
+            is OutContextCommand.Next -> processNext()
+        }
+
         // Start a new job for the new context
         activeJob =
             scope.launch {
-                when (outContextCommand) {
-                    is OutContextCommand.Init -> processInit()
-                    is OutContextCommand.Load -> processLoad(outContextCommand.mediaItem)
-                    is OutContextCommand.Stop -> processStop()
-                    is OutContextCommand.Release -> processRelease()
-                    is OutContextCommand.Previous -> processPrevious()
-                    is OutContextCommand.Next -> processNext()
-                }
-
                 // If the job is still active after the initial processing
                 // (e.g., load was successful), start consuming in-context commands
                 if (isActive) {
@@ -335,22 +360,10 @@ abstract class SaltPlayer(
                             is InContextCommand.Play -> processPlay()
                             is InContextCommand.Pause -> processPause()
                             is InContextCommand.SeekTo -> processSeekTo(inContextCommand.position)
-                            is InContextCommand.SetConfig ->
-                                processSetConfig(
-                                    inContextCommand.config
-                                )
-                            is InContextCommand.CustomInContextCommand ->
-                                processCustomInContextCommand(inContextCommand.command)
                         }
                     }
                 }
             }
-
-        // By yielding here, we explicitly create a suspension point
-        // 1. It satisfies the IDE's requirement for the `suspend` modifier
-        // 2. More importantly, it gives the just-cancelled `activeJob` a chance
-        //    to execute its cleanup logic promptly on the single-threaded dispatcher
-        yield()
     }
 
     companion object {

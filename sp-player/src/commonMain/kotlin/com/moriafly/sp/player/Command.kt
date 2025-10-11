@@ -36,6 +36,28 @@ interface Command
 interface CustomCommand
 
 /**
+ * Non-context commands should not be affected by the context flow and must be triggered correctly.
+ */
+@UnstableSpPlayerApi
+sealed interface NonContextCommand : Command {
+    /**
+     * Command to update player configuration.
+     *
+     * @param config The new configuration settings.
+     */
+    data class SetConfig(
+        val config: Config
+    ) : NonContextCommand
+
+    /**
+     * Command to execute a custom in-context command.
+     */
+    data class Custom(
+        val command: CustomCommand
+    ) : NonContextCommand
+}
+
+/**
  * Internal context commands that require synchronous execution.
  *
  * Rules:
@@ -45,7 +67,7 @@ interface CustomCommand
  * Conclusion: New external commands will wait for previous commands to complete.
  */
 @UnstableSpPlayerApi
-sealed interface InContextCommand : Command {
+internal sealed interface InContextCommand : Command {
     /**
      * Command to prepare playback at a specific position.
      *
@@ -74,22 +96,6 @@ sealed interface InContextCommand : Command {
      */
     data class SeekTo(
         val position: Long
-    ) : InContextCommand
-
-    /**
-     * Command to update player configuration.
-     *
-     * @param config The new configuration settings.
-     */
-    data class SetConfig(
-        val config: Config
-    ) : InContextCommand
-
-    /**
-     * Command to execute a custom in-context command.
-     */
-    data class CustomInContextCommand(
-        val command: CustomCommand
     ) : InContextCommand
 }
 
