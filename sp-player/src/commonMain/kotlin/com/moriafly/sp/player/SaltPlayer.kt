@@ -317,18 +317,23 @@ abstract class SaltPlayer(
 
     protected open suspend fun processCustomCommand(command: CustomCommand) {}
 
-    // 触发回调：直接读取当前不可变列表（快照）
+    /**
+     * Triggers all registered callbacks by executing the given [block] on each one.
+     * Safely operates on an immutable snapshot of the current callbacks.
+     *
+     * Note: Callback exceptions should be handled by the caller as they indicate
+     * application-specific error conditions rather than infrastructure failures.
+     */
     protected fun triggerCallbacks(block: (Callback) -> Unit) {
-        // 1. 获取回调快照（非 suspend，可在任何地方调用）
-        val currentCallbacks = _callbacks.value
+        // Get an immutable snapshot of current callbacks (thread-safe read)
+        val callbacksSnapshot = _callbacks.value
 
-        // 2. 提交到 scope 执行，自动处理线程切换和异常
+        // Process callbacks in the configured coroutine scope
         scope.launch {
-            // 切换到主线程
+            // Ensure execution on the callback dispatcher (typically Main)
             withContext(callbackDispatcher) {
-                // 遍历回调并执行
-                currentCallbacks.forEach { callback ->
-                    // Callbacks that crash should be caught and resolved by the caller
+                callbacksSnapshot.forEach { callback ->
+                    // Intentional: Don't catch exceptions here - let callers handle their own errors
                     block(callback)
                 }
             }
