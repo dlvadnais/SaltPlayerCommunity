@@ -225,7 +225,7 @@ abstract class SaltPlayer(
 
     fun setConfig(config: Config) = commandChannel.trySend(NonContextCommand.SetConfig(config))
 
-    fun customInContextCommand(command: CustomCommand) =
+    fun customCommand(command: CustomCommand) =
         commandChannel.trySend(NonContextCommand.Custom(command))
 
     abstract fun getIsPlaying(): Boolean
@@ -294,12 +294,12 @@ abstract class SaltPlayer(
 
     protected open suspend fun processSetConfig(config: Config) {}
 
-    protected open suspend fun processCustomInContextCommand(command: CustomCommand) {}
+    protected open suspend fun processCustomCommand(command: CustomCommand) {}
 
     private suspend fun processNonContextCommand(nonContextCommand: NonContextCommand) {
         when (nonContextCommand) {
             is NonContextCommand.SetConfig -> processSetConfig(nonContextCommand.config)
-            is NonContextCommand.Custom -> processCustomInContextCommand(nonContextCommand.command)
+            is NonContextCommand.Custom -> processCustomCommand(nonContextCommand.command)
         }
     }
 
