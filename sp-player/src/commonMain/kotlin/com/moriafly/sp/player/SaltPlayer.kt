@@ -250,7 +250,8 @@ abstract class SaltPlayer(
     fun addCallback(callback: Callback) {
         scope.launch {
             _callbacks.getAndUpdate { oldList ->
-                oldList + callback
+                // Avoid duplicates
+                if (oldList.contains(callback)) oldList else oldList + callback
             }
         }
     }
