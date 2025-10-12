@@ -23,6 +23,7 @@
 package com.moriafly.sp.player
 
 import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.getAndUpdate
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,9 +31,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * # SaltPlayer
@@ -109,7 +112,8 @@ abstract class SaltPlayer(
     /**
      * A list of [Callback]s to be notified of player events like state changes.
      */
-    protected val callbacks = mutableListOf<Callback>()
+    @Suppress("ktlint:standard:backing-property-naming")
+    private val _callbacks = atomic<List<Callback>>(emptyList())
 
     private val _mediaItem = atomic<Any?>(null)
 
@@ -135,13 +139,13 @@ abstract class SaltPlayer(
 
             when (value) {
                 State.Ready -> {
-                    callbacks.forEach { it.onIsPlayingChanged(getIsPlaying()) }
+                    triggerCallbacks { it.onIsPlayingChanged(getIsPlaying()) }
                 }
                 else -> {
                     // Do nothing for other states in here
                 }
             }
-            callbacks.forEach { it.onStateChanged(value) }
+            triggerCallbacks { it.onStateChanged(value) }
         }
 
     init {
@@ -244,14 +248,22 @@ abstract class SaltPlayer(
      * Adds a [Callback] to receive player events.
      */
     fun addCallback(callback: Callback) {
-        callbacks.add(callback)
+        scope.launch {
+            _callbacks.getAndUpdate { oldList ->
+                oldList + callback
+            }
+        }
     }
 
     /**
      * Removes a previously added [Callback].
      */
     fun removeCallback(callback: Callback) {
-        callbacks.remove(callback)
+        scope.launch {
+            _callbacks.getAndUpdate { oldList ->
+                oldList - callback
+            }
+        }
     }
 
     /**
@@ -278,7 +290,13 @@ abstract class SaltPlayer(
     /**
      * **⚠️ Implementation Note: Coroutine Cancellation**
      */
-    protected abstract suspend fun processRelease()
+    protected open suspend fun processRelease() {
+        scope.cancel()
+        commandChannel.close()
+        inContextCommandChannel.close()
+        activeJob?.cancel()
+        _callbacks.getAndSet(emptyList())
+    }
 
     protected abstract suspend fun processSeekTo(position: Long)
 
@@ -295,6 +313,23 @@ abstract class SaltPlayer(
     protected open suspend fun processSetConfig(config: Config) {}
 
     protected open suspend fun processCustomCommand(command: CustomCommand) {}
+
+    // 触发回调：直接读取当前不可变列表（快照）
+    protected fun triggerCallbacks(block: (Callback) -> Unit) {
+        // 1. 获取回调快照（非 suspend，可在任何地方调用）
+        val currentCallbacks = _callbacks.value
+
+        // 2. 提交到 scope 执行，自动处理线程切换和异常
+        scope.launch {
+            // 切换到主线程
+            withContext(Dispatchers.Main) {
+                // 遍历回调并执行
+                currentCallbacks.forEach { callback ->
+                    block(callback)
+                }
+            }
+        }
+    }
 
     private suspend fun processNonContextCommand(nonContextCommand: NonContextCommand) {
         when (nonContextCommand) {
