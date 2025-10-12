@@ -80,10 +80,12 @@ import kotlinx.coroutines.withContext
  * in the process of creating are properly cleaned up if the operation is cancelled halfway through.
  *
  * @param dispatcher The [CoroutineDispatcher] to use for all player operations.
+ * @param callbackDispatcher The [CoroutineDispatcher] to use for all callbacks.
  */
 @UnstableSpPlayerApi
 abstract class SaltPlayer(
-    dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)
+    dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main
 ) {
     /**
      * The [CoroutineScope] for all player operations. It uses a [SupervisorJob] to ensure that
@@ -323,9 +325,10 @@ abstract class SaltPlayer(
         // 2. 提交到 scope 执行，自动处理线程切换和异常
         scope.launch {
             // 切换到主线程
-            withContext(Dispatchers.Main) {
+            withContext(callbackDispatcher) {
                 // 遍历回调并执行
                 currentCallbacks.forEach { callback ->
+                    // Callbacks that crash should be caught and resolved by the caller
                     block(callback)
                 }
             }
