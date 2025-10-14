@@ -163,6 +163,8 @@ abstract class SaltPlayer(
                 }
             }
         }
+
+        newActiveJob()
     }
 
     /**
@@ -351,14 +353,11 @@ abstract class SaltPlayer(
      * Forwards an [InContextCommand] to the dedicated channel for processing by the active job.
      */
     private fun processInContextCommand(inContextCommand: InContextCommand) {
-        // If there is an active job, forward the command to the in-context channel
-        if (activeJob?.isActive == true) {
-            // Use trySend for forwarding to avoid blocking, allowing the in-context method to be
-            // interrupted by out-of-context operations
-            // That is, when an out-of-context command is triggered, it can enter
-            // processOutContextCommand to clear the in-context command
-            inContextCommandChannel.trySend(inContextCommand)
-        }
+        // Use trySend for forwarding to avoid blocking, allowing the in-context method to be
+        // interrupted by out-of-context operations
+        // That is, when an out-of-context command is triggered, it can enter
+        // processOutContextCommand to clear the in-context command
+        inContextCommandChannel.trySend(inContextCommand)
     }
 
     /**
@@ -388,6 +387,10 @@ abstract class SaltPlayer(
         }
 
         // Start a new job for the new context
+        newActiveJob()
+    }
+
+    private fun newActiveJob() {
         activeJob =
             scope.launch {
                 // If the job is still active after the initial processing
