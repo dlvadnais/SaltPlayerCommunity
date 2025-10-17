@@ -21,23 +21,23 @@
 package com.moriafly.sp.player
 
 /**
- * A media source that can be loaded into a player.
+ * A media source IO that can be loaded into a player.
  */
-interface MediaSource {
+interface SourceIO {
     /**
      * Prepare the media source for playback.
      */
-    suspend fun prepare()
+    suspend fun sourcePrepare(mediaItem: Any?)
 
     /**
      * Seek to a specific position in the media source.
      *
      * @param position The position to seek to, in milliseconds.
      */
-    suspend fun seekTo(position: Long)
+    suspend fun sourceSeekTo(mediaItem: Any?, position: Long)
 
     /**
      * Release all resources associated with the media source.
      */
-    suspend fun release()
+    suspend fun sourceRelease(mediaItem: Any?)
 }

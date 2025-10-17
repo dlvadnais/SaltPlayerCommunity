@@ -22,7 +22,7 @@ package com.moriafly.sp.player.internal
 
 import com.moriafly.sp.player.Command
 import com.moriafly.sp.player.Config
-import com.moriafly.sp.player.MediaSource
+import com.moriafly.sp.player.SourceIO
 import com.moriafly.sp.player.UnstableSpPlayerApi
 
 /**
@@ -41,7 +41,7 @@ internal sealed interface InternalCommand : Command {
      * @param mediaSource The media item to load.
      */
     data class Load(
-        val mediaSource: MediaSource?,
+        val mediaSource: SourceIO?,
     ) : InternalCommand
 
     /**

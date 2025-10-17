@@ -66,7 +66,8 @@ abstract class SaltPlayer(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : CommandPlayer(
         commandDispatcher = commandDispatcher
-    ) {
+    ),
+    SourceIO {
     private val ioScope = CoroutineScope(ioDispatcher + SupervisorJob())
 
     /**
@@ -87,7 +88,7 @@ abstract class SaltPlayer(
     /**
      * The current media item being played or loaded
      */
-    var mediaSource: MediaSource? = null
+    var mediaItem: Any? = null
         protected set
 
     /**
@@ -103,8 +104,8 @@ abstract class SaltPlayer(
         ioScope.launch {
             for (seekTo in seekToChannel) {
                 try {
-                    val currentMediaSource = getOrThrowCurrentMediaSource()
-                    currentMediaSource.seekTo(seekTo)
+                    val currentMediaItem = getOrThrowCurrentMediaItem()
+                    sourceSeekTo(currentMediaItem, seekTo)
                 } catch (e: SaltPlayerException) {
                     triggerCallbacks { callback -> callback.onRecoverableError(e) }
                 } finally {
@@ -135,7 +136,7 @@ abstract class SaltPlayer(
      *
      * @param mediaItem The media resource to load, or `null` to clear the player.
      */
-    fun load(mediaItem: MediaSource?) = sendCommand(InternalCommand.Load(mediaItem))
+    fun load(mediaItem: SourceIO?) = sendCommand(InternalCommand.Load(mediaItem))
 
     /**
      * Prepares media for playback.
@@ -288,20 +289,20 @@ abstract class SaltPlayer(
 
     @Suppress("RedundantSuspendModifier")
     private suspend fun processPrepare() {
-        val currentMediaSource = getOrThrowCurrentMediaSource()
+        val currentMediaItem = getOrThrowCurrentMediaItem()
 
         state = State.Buffering
 
         prepareIOJob?.cancel()
         prepareIOJob =
             ioScope.launch {
-                currentMediaSource.prepare()
+                sourcePrepare(currentMediaItem)
                 if (isActive) {
                     // Ready
                     sendCommand(InternalCommand.PrepareCompleted)
                 } else {
                     // Release current media source
-                    currentMediaSource.release()
+                    sourceRelease(currentMediaItem)
                 }
             }
     }
@@ -313,17 +314,17 @@ abstract class SaltPlayer(
     }
 
     private fun checkMediaSourceLoaded() {
-        if (mediaSource == null) {
+        if (mediaItem == null) {
             throw UnLoadedException()
         }
     }
 
-    private fun getOrThrowCurrentMediaSource(): MediaSource {
-        val currentMediaSource = mediaSource
-        if (currentMediaSource == null) {
+    private fun getOrThrowCurrentMediaItem(): Any {
+        val currentMediaItem = mediaItem
+        if (currentMediaItem == null) {
             throw UnLoadedException()
         }
-        return currentMediaSource
+        return currentMediaItem
     }
 
     companion object {
