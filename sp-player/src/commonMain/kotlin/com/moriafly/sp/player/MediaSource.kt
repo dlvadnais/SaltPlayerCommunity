@@ -18,13 +18,19 @@
  * USA
  */
 
-@file:Suppress("unused")
-
 package com.moriafly.sp.player
 
 /**
- * Marker interface for all player commands.
- * Commands are used to control the player's behavior.
+ * A media source that can be loaded into a player.
  */
-@UnstableSpPlayerApi
-interface Command
+interface MediaSource {
+    /**
+     * Prepare the media source for playback.
+     */
+    suspend fun prepare()
+
+    /**
+     * Release all resources associated with the media source.
+     */
+    suspend fun release()
+}
