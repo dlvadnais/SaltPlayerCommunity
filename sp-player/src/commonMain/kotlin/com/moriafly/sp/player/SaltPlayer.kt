@@ -23,6 +23,7 @@
 package com.moriafly.sp.player
 
 import com.moriafly.sp.player.internal.InternalCommand
+import kotlinx.atomicfu.AtomicRef
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.update
 import kotlinx.coroutines.CoroutineDispatcher
@@ -33,7 +34,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -76,9 +76,20 @@ abstract class SaltPlayer(
     private var prepareIOJob: Job? = null
 
     /**
-     * A channel for seeking operations.
+     * A job for seeking operations.
      */
-    private val seekToChannel = Channel<Long>(Channel.CONFLATED)
+    private var seekToIOJob: Job? = null
+
+    private var _provider: AtomicRef<Provider?> = atomic(null)
+
+    /**
+     * The provider for the underlying player engine.
+     */
+    var provider: Provider?
+        get() = _provider.value
+        set(value) {
+            _provider.update { value }
+        }
 
     /**
      * A list of [Callback]s to be notified of player events like state changes.
@@ -95,28 +106,12 @@ abstract class SaltPlayer(
      * The current [State] of the player.
      */
     var state: State = State.Idle
-        protected set(value) {
+        private set(value) {
             field = value
             triggerCallbacks { it.onStateChanged(value) }
         }
 
-    init {
-        ioScope.launch {
-            for (seekTo in seekToChannel) {
-                try {
-                    val currentMediaItem = getOrThrowCurrentMediaItem()
-                    sourceSeekTo(currentMediaItem, seekTo)
-                } catch (e: SaltPlayerException) {
-                    triggerCallbacks { callback -> callback.onRecoverableError(e) }
-                } finally {
-                    // If the channel is empty, send a SeekToCompleted command
-                    if (seekToChannel.isEmpty) {
-                        sendCommand(InternalCommand.SeekToCompleted)
-                    }
-                }
-            }
-        }
-    }
+    private var playWhenReady = false
 
     /**
      * After initializing the player, this function needs to be called to load libraries and
@@ -218,6 +213,10 @@ abstract class SaltPlayer(
 
     protected abstract suspend fun processPause()
 
+    protected abstract suspend fun processOnLoop()
+
+    protected abstract suspend fun processOnGapless()
+
     protected abstract suspend fun processStop()
 
     protected open suspend fun processRelease() {
@@ -232,23 +231,13 @@ abstract class SaltPlayer(
         callbacks.value = emptyList()
     }
 
-    protected abstract suspend fun processPrevious()
-
-    protected abstract suspend fun processNext()
-
     protected abstract suspend fun processSetConfig(config: Config)
 
-    protected open suspend fun processPrepareCompleted() {
-        state = State.Ready
-        // TODO Is this necessary? Like gapless playback?
-        triggerCallbacks { it.onIsPlayingChanged(getIsPlaying()) }
-    }
+    protected abstract suspend fun processPrepareCompleted()
 
-    protected open suspend fun processSeekToCompleted() {
-        state = State.Ready
-    }
+    protected abstract suspend fun processSeekToCompleted()
 
-    protected open suspend fun processCustomCommand(command: Command) {}
+    protected abstract suspend fun processCustomCommand(command: Command)
 
     protected fun triggerCallbacks(block: (Callback) -> Unit) {
         // Get an immutable snapshot of the current callback list
@@ -263,19 +252,99 @@ abstract class SaltPlayer(
         try {
             if (command is InternalCommand) {
                 when (command) {
-                    is InternalCommand.Init -> processInit()
-                    is InternalCommand.Load -> processLoad(command.mediaSource)
+                    is InternalCommand.Init -> {
+                        processInit()
+                        state = State.Idle
+                    }
+
+                    is InternalCommand.Load -> {
+                        state = State.Idle
+                        playWhenReady = false
+                        processLoad(command.mediaSource)
+                    }
+
                     is InternalCommand.Prepare -> processPrepare()
-                    is InternalCommand.Play -> processPlay()
-                    is InternalCommand.Pause -> processPause()
-                    is InternalCommand.SeekTo -> processSeekTo(command.position)
+
+                    is InternalCommand.Play -> {
+                        if (state == State.Ready) {
+                            // If the player is ready, start playback
+                            processPlay()
+                            triggerCallbacks { it.onIsPlayingChanged(getIsPlaying()) }
+
+                            playWhenReady = false
+                        } else {
+                            // If the player is not ready, set playWhenReady to true
+                            playWhenReady = true
+                        }
+                    }
+
+                    is InternalCommand.Pause -> {
+                        if (state == State.Ready) {
+                            processPause()
+                            triggerCallbacks { it.onIsPlayingChanged(getIsPlaying()) }
+                        }
+                    }
+
+                    is InternalCommand.OnEnded -> {
+                        state = State.Ended
+
+                        val endedType = provider?.onEnded()
+                        when (endedType) {
+                            Provider.EndedType.Loop -> {
+                                state = State.Buffering
+                                processOnLoop()
+                                state = State.Ready
+                                if (playWhenReady) {
+                                    processPlay()
+                                }
+                            }
+
+                            Provider.EndedType.Gapless -> {
+                                state = State.Buffering
+                                processOnGapless()
+                                state = State.Ready
+                                if (playWhenReady) {
+                                    processPlay()
+                                }
+                            }
+
+                            else -> processStop()
+                        }
+                    }
+
+                    is InternalCommand.SeekTo -> {
+                        state = State.Buffering
+                        processSeekTo(command.position)
+                    }
+
                     is InternalCommand.Previous -> processPrevious()
+
                     is InternalCommand.Next -> processNext()
-                    is InternalCommand.Stop -> processStop()
+
+                    is InternalCommand.Stop -> {
+                        state = State.Ended
+                        processStop()
+                    }
+
                     is InternalCommand.Release -> processRelease()
+
                     is InternalCommand.SetConfig -> processSetConfig(command.config)
-                    is InternalCommand.PrepareCompleted -> processPrepareCompleted()
-                    is InternalCommand.SeekToCompleted -> processSeekToCompleted()
+
+                    is InternalCommand.PrepareCompleted -> {
+                        state = State.Ready
+                        if (playWhenReady) {
+                            processPlay()
+                        }
+                        processPrepareCompleted()
+                    }
+
+                    is InternalCommand.SeekToCompleted -> {
+                        state = State.Ready
+                        if (playWhenReady) {
+                            processPlay()
+                        }
+                        processSeekToCompleted()
+                    }
                 }
             } else {
                 processCustomCommand(command)
@@ -309,8 +378,37 @@ abstract class SaltPlayer(
 
     @Suppress("RedundantSuspendModifier")
     private suspend fun processSeekTo(position: Long) {
+        val currentMediaItem = getOrThrowCurrentMediaItem()
+
         state = State.Buffering
-        seekToChannel.trySend(position)
+
+        seekToIOJob?.cancel()
+        seekToIOJob =
+            ioScope.launch {
+                sourceSeekTo(currentMediaItem, position)
+                if (isActive) {
+                    // Ready
+                    sendCommand(InternalCommand.SeekToCompleted)
+                } else {
+                    // Do nothing
+                }
+            }
+    }
+
+    private suspend fun processPrevious() {
+        provider?.onGetPrevious()?.let {
+            processLoad(it)
+            processPrepare()
+            processPlay()
+        }
+    }
+
+    private suspend fun processNext() {
+        provider?.onGetNext()?.let {
+            processLoad(it)
+            processPrepare()
+            processPlay()
+        }
     }
 
     private fun checkMediaSourceLoaded() {

@@ -23,6 +23,7 @@ package com.moriafly.sp.player
 /**
  * A media source IO that can be loaded into a player.
  */
+@UnstableSpPlayerApi
 interface SourceIO {
     /**
      * Prepare the media source for playback.
