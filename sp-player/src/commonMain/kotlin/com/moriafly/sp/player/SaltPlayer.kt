@@ -171,14 +171,8 @@ abstract class SaltPlayer(
         callbacks.remove(callback)
     }
 
-    /**
-     * **⚠️ Implementation Note: Coroutine Cancellation**
-     */
     protected abstract suspend fun processInit()
 
-    /**
-     * **⚠️ Implementation Note: Coroutine Cancellation**
-     */
     protected abstract suspend fun processLoad(mediaItem: Any?)
 
     protected abstract suspend fun processPlay()
