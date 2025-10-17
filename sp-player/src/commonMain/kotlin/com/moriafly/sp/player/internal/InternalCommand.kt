@@ -97,5 +97,7 @@ internal sealed interface InternalCommand : Command {
         val config: Config
     ) : InternalCommand
 
-    object WhenReady : InternalCommand
+    object PrepareCompleted : InternalCommand
+
+    object SeekToCompleted : InternalCommand
 }

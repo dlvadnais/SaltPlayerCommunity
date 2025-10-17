@@ -30,6 +30,13 @@ interface MediaSource {
     suspend fun prepare()
 
     /**
+     * Seek to a specific position in the media source.
+     *
+     * @param position The position to seek to, in milliseconds.
+     */
+    suspend fun seekTo(position: Long)
+
+    /**
      * Release all resources associated with the media source.
      */
     suspend fun release()
