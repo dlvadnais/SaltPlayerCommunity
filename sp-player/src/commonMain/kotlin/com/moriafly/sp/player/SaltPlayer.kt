@@ -23,9 +23,6 @@
 package com.moriafly.sp.player
 
 import com.moriafly.sp.player.internal.InternalCommand
-import kotlinx.atomicfu.AtomicRef
-import kotlinx.atomicfu.atomic
-import kotlinx.atomicfu.update
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +33,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.concurrent.Volatile
 
 /**
  * # SaltPlayer
@@ -80,21 +78,17 @@ abstract class SaltPlayer(
      */
     private var seekToIOJob: Job? = null
 
-    private var _provider: AtomicRef<Provider?> = atomic(null)
-
     /**
      * The provider for the underlying player engine.
      */
-    var provider: Provider?
-        get() = _provider.value
-        set(value) {
-            _provider.update { value }
-        }
+    @Volatile
+    var provider: Provider? = null
 
     /**
-     * A list of [Callback]s to be notified of player events like state changes.
+     * The callbacks to notify when certain events occur.
      */
-    private val callbacks = atomic(emptyList<Callback>())
+    @Volatile
+    var callback: Callback? = null
 
     /**
      * The current media item being played or loaded
@@ -185,26 +179,6 @@ abstract class SaltPlayer(
      */
     abstract fun getPosition(): Long
 
-    /**
-     * Adds a [Callback] to receive player events. This is a thread-safe and lock-free operation.
-     */
-    fun addCallback(callback: Callback) {
-        callbacks.update { currentList ->
-            // Create a new list with the new callback added
-            currentList + callback
-        }
-    }
-
-    /**
-     * Removes a previously added [Callback]. This is a thread-safe and lock-free operation.
-     */
-    fun removeCallback(callback: Callback) {
-        callbacks.update { currentList ->
-            // Create a new list with the specified callback removed
-            currentList - callback
-        }
-    }
-
     protected abstract suspend fun processInit()
 
     protected abstract suspend fun processLoad(mediaItem: Any?)
@@ -227,8 +201,8 @@ abstract class SaltPlayer(
 
         ioScope.cancel()
 
-        // Clear the callbacks by setting the reference to a new empty list
-        callbacks.value = emptyList()
+        provider = null
+        callback = null
     }
 
     protected abstract suspend fun processSetConfig(config: Config)
@@ -240,12 +214,7 @@ abstract class SaltPlayer(
     protected abstract suspend fun processCustomCommand(command: Command)
 
     protected fun triggerCallbacks(block: (Callback) -> Unit) {
-        // Get an immutable snapshot of the current callback list
-        // This is safe even if other threads are calling addCallback/removeCallback concurrently
-        val currentCallbacks = callbacks.value
-        currentCallbacks.forEach { callback ->
-            block(callback)
-        }
+        callback?.let { block(it) }
     }
 
     override suspend fun processCommand(command: Command) {

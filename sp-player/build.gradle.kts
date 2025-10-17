@@ -4,8 +4,11 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.android.lint)
-    alias(libs.plugins.kotlinx.atomicfu)
+    id("maven-publish")
 }
+
+group = "com.moriafly.sp"
+version = "0.0.0-SNAPSHOT"
 
 kotlin {
     jvm()
