@@ -23,6 +23,8 @@
 package com.moriafly.sp.player
 
 import com.moriafly.sp.player.internal.InternalCommand
+import kotlinx.atomicfu.atomic
+import kotlinx.atomicfu.update
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,11 +38,27 @@ import kotlinx.coroutines.launch
  *
  * An abstract base class for a media player, designed with a command-driven architecture
  * using Kotlin Coroutines and Channels. It manages the player's state and lifecycle.
+ *
+ * ## Core Design Principles
+ * 1.  **Command-Driven**: All player operations (e.g., play, pause, seek) are encapsulated as
+ * [Command] objects and sent to an internal queue (Channel).
+ * 2.  **Sequential Execution**: A dedicated coroutine processes commands from the queue one by one,
+ * in the order they were sent. This design fundamentally eliminates race conditions and state
+ * conflicts that can arise from concurrent operations.
+ * 3.  **Thread Confinement**: The `commandDispatcher` defaults to `Dispatchers.Default.limitedParallelism(1)`.
+ * This ensures that all core logic for command processing **always executes on the same, single thread**.
+ * This is crucial for safely interacting with non-thread-safe underlying player engines (like C++ libraries)
+ * and greatly simplifies state management.
+ *
+ * @param commandDispatcher The [CoroutineDispatcher] used for processing commands. Defaults to a
+ * single-threaded dispatcher to ensure thread safety and sequential execution.
+ * @param ioDispatcher The [CoroutineDispatcher] used for expensive I/O operations, such as preparing
+ * a media file.
  */
 @UnstableSpPlayerApi
 abstract class SaltPlayer(
     commandDispatcher: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1),
-    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)
 ) : CommandPlayer(
         commandDispatcher = commandDispatcher
     ) {
@@ -59,7 +77,7 @@ abstract class SaltPlayer(
     /**
      * A list of [Callback]s to be notified of player events like state changes.
      */
-    private val callbacks: MutableList<Callback> = mutableListOf()
+    private val callbacks = atomic(emptyList<Callback>())
 
     /**
      * The current media item being played or loaded
@@ -158,17 +176,23 @@ abstract class SaltPlayer(
     abstract fun getPosition(): Long
 
     /**
-     * Adds a [Callback] to receive player events.
+     * Adds a [Callback] to receive player events. This is a thread-safe and lock-free operation.
      */
     fun addCallback(callback: Callback) {
-        callbacks.add(callback)
+        callbacks.update { currentList ->
+            // Create a new list with the new callback added
+            currentList + callback
+        }
     }
 
     /**
-     * Removes a previously added [Callback].
+     * Removes a previously added [Callback]. This is a thread-safe and lock-free operation.
      */
     fun removeCallback(callback: Callback) {
-        callbacks.remove(callback)
+        callbacks.update { currentList ->
+            // Create a new list with the specified callback removed
+            currentList - callback
+        }
     }
 
     protected abstract suspend fun processInit()
@@ -190,7 +214,8 @@ abstract class SaltPlayer(
         seekToIOJob?.cancel()
         seekToIOJob = null
 
-        callbacks.clear()
+        // Clear the callbacks by setting the reference to a new empty list
+        callbacks.value = emptyList()
     }
 
     protected abstract suspend fun processSeekTo(position: Long)
@@ -208,8 +233,10 @@ abstract class SaltPlayer(
     protected open suspend fun processCustomCommand(command: Command) {}
 
     protected fun triggerCallbacks(block: (Callback) -> Unit) {
-        callbacks.forEach { callback ->
-            // Intentional: Don't catch exceptions here - let callers handle their own errors
+        // Get an immutable snapshot of the current callback list
+        // This is safe even if other threads are calling addCallback/removeCallback concurrently
+        val currentCallbacks = callbacks.value
+        currentCallbacks.forEach { callback ->
             block(callback)
         }
     }
