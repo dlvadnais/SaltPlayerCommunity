@@ -211,6 +211,8 @@ abstract class SaltPlayer(
         state = State.Ready
     }
 
+    protected open suspend fun processCustomCommand(command: Command) {}
+
     protected fun triggerCallbacks(block: (Callback) -> Unit) {
         callbacks.forEach { callback ->
             // Intentional: Don't catch exceptions here - let callers handle their own errors
@@ -219,7 +221,24 @@ abstract class SaltPlayer(
     }
 
     override suspend fun processCommand(command: Command) {
-        TODO("Not yet implemented")
+        if (command is InternalCommand) {
+            when (command) {
+                is InternalCommand.Init -> processInit()
+                is InternalCommand.Load -> processLoad(command.mediaSource)
+                is InternalCommand.Prepare -> processPrepare()
+                is InternalCommand.Play -> processPlay()
+                is InternalCommand.Pause -> processPause()
+                is InternalCommand.SeekTo -> processSeekTo(command.position)
+                is InternalCommand.Previous -> processPrevious()
+                is InternalCommand.Next -> processNext()
+                is InternalCommand.Stop -> processStop()
+                is InternalCommand.Release -> processRelease()
+                is InternalCommand.SetConfig -> processSetConfig(command.config)
+                is InternalCommand.WhenReady -> processWhenReady()
+            }
+        } else {
+            processCustomCommand(command)
+        }
     }
 
     @Suppress("RedundantSuspendModifier")

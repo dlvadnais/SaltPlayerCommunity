@@ -38,10 +38,10 @@ internal sealed interface InternalCommand : Command {
     /**
      * Command to load a new media item.
      *
-     * @param mediaItem The media item to load.
+     * @param mediaSource The media item to load.
      */
     data class Load(
-        val mediaItem: MediaSource?,
+        val mediaSource: MediaSource?,
     ) : InternalCommand
 
     /**
