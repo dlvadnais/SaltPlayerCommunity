@@ -125,7 +125,7 @@ abstract class SaltPlayer(
      *
      * @param mediaItem The media resource to load, or `null` to clear the player.
      */
-    fun load(mediaItem: SourceIO?) = sendCommand(InternalCommand.Load(mediaItem))
+    fun load(mediaItem: Any?) = sendCommand(InternalCommand.Load(mediaItem))
 
     /**
      * Prepares media for playback.
