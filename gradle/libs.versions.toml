@@ -10,7 +10,6 @@ material = "1.13.0"
 runner = "1.7.0"
 core = "1.7.0"
 jetbrains-kotlinx-coroutines = "1.9.0"
-kotlinx-atomicfu = "0.29.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,4 +31,3 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 android-lint = { id = "com.android.lint", version.ref = "agp" }
-kotlinx-atomicfu = { id  = "org.jetbrains.kotlinx.atomicfu", version.ref = "kotlinx-atomicfu" }
